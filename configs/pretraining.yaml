@@ -1,0 +1,39 @@
+# Continued Pretraining Configuration
+# Medical domain adaptation with LoRA
+
+stage: continued_pretraining
+
+
+model:
+  name: Qwen3.5-0.8B
+  dtype: bfloat16
+
+
+data:
+  type: medical_corpus
+  block_size: 512
+  packing: true
+
+
+training:
+  objective: causal_language_modeling
+
+  learning_rate: 2e-4
+  max_steps: 100
+
+  batch_size: 4
+  gradient_accumulation_steps: 4
+
+  gradient_checkpointing: true
+
+
+lora:
+  enabled: true
+
+  rank: 8
+  alpha: 16
+  dropout: 0.05
+
+
+output:
+  save_adapter_only: true
