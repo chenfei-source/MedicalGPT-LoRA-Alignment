@@ -1,79 +1,181 @@
 # Experiments and Analysis
 
-This document summarizes the practical issues encountered during the LLM post-training experiments, including SFT behavior degradation, DPO evaluation analysis, and engineering challenges.
+This document summarizes the experimental results and observations during the three-stage LLM post-training pipeline:
+
+1. Continued Pretraining
+2. Supervised Fine-tuning (SFT)
+3. Preference Alignment with DPO
 
 
 ---
 
-## 1. SFT Repetition Issue
+# 1. Continued Pretraining Analysis
 
-### Observation
+## Training Configuration
 
-After supervised fine-tuning, the model showed improved instruction-following ability and generated more domain-specific responses.
+The model was adapted to the medical domain through continued pretraining using causal language modeling.
 
-However, repetitive generation patterns were observed in some cases:
+Parameter-efficient fine-tuning was performed with LoRA.
+
+Main configuration:
+
+- LoRA rank: 8
+- LoRA alpha: 16
+- LoRA dropout: 0.05
+- Training steps: 100
+- Epochs: 3
+
+
+## Results
+
+Training results:
+Train loss: 3.593
+Evaluation results:
+Eval loss: 2.689
+Perplexity: 14.72
+
+
+## Analysis
+
+The decrease from training loss to evaluation loss indicates that the model successfully adapted to the medical corpus.
+
+After this stage, the model gained domain-specific knowledge but did not yet have strong instruction-following ability.
+
+Therefore, further supervised fine-tuning was required.
+
+
+---
+
+# 2. Supervised Fine-tuning Analysis
+
+## Training Configuration
+
+SFT was performed on instruction-response datasets based on the merged continued-pretraining model.
+
+Main configuration:
+
+- Base model: PT merged model
+- LoRA rank: 8
+- LoRA alpha: 16
+- Learning rate: 2e-5
+- Training steps: 100
+- Epochs: 2
+
+
+## Results
+
+Final training results:
+Train loss: 2.5559
+Evaluation results:
+Eval loss: 1.3350
+Perplexity: 3.80
+
+
+## Observation: Repetitive Generation
+
+Although SFT improved instruction-following ability, repetitive responses were observed in some cases.
+
+Typical symptoms:
 
 - Repeated sentences
-- Fixed response templates
-- Reduced response diversity
+- Fixed response patterns
+- Reduced generation diversity
 
 
-### Analysis
+## Analysis
 
-The possible reasons include:
+Possible causes:
+
+### Limited Instruction Diversity
+
+A small instruction dataset may cause the model to memorize frequent response patterns instead of learning general response strategies.
 
 
-### Limited Dataset Diversity
+### Supervised Objective Limitation
 
-A small SFT dataset may cause the model to memorize frequent response patterns instead of learning general instruction-following behavior.
+SFT optimizes the likelihood of reference responses.
+
+It teaches the model:
+
+generate responses similar to demonstrations
+but does not explicitly optimize:
+which response is preferred
 
 
 ### Distribution Shift
 
-SFT changes the model distribution from general language modeling toward the fine-tuning dataset.
-
-Aggressive fine-tuning may reduce the diversity learned from the original model.
+Aggressive instruction tuning may shift the model behavior toward the fine-tuning dataset distribution and reduce output diversity.
 
 
-### Training Objective Limitation
+## Possible Improvements
 
-SFT optimizes supervised token prediction but does not explicitly model human preference.
+Potential solutions:
 
-Therefore, it may produce responses that are correct but not always preferred.
-
-
-### Possible Improvements
-
-- Increase instruction and response diversity
-- Reduce over-training
-- Tune learning rate and LoRA configuration
+- Increase instruction dataset diversity
+- Adjust SFT training intensity
+- Tune LoRA capacity and learning rate
 - Apply preference alignment methods such as DPO
 
 
 ---
 
-## 2. DPO Alignment Analysis
 
-### Observation
+# 3. DPO Alignment Analysis
 
-After DPO training, the model showed improved preference alignment.
+## Training Configuration
 
-The evaluation showed:
+DPO was applied after SFT to optimize response preference.
 
-- High reward accuracy
-- Large reward margin between chosen and rejected responses
+The model was trained with preference pairs:
+
+(prompt, chosen response, rejected response)
+
+Main configuration:
+
+- Base model: SFT merged model
+- LoRA rank: 8
+- LoRA alpha: 16
+- LoRA dropout: 0.05
+- Learning rate: 5e-4
+- Training steps: 100
+- Epochs: 3
 
 
-### Analysis
+## Results
 
-A high preference score indicates that the model successfully learned the ranking relationship in the preference dataset.
+Final training:
+Train loss: 0.342
+Evaluation:
+Eval loss: 0.00146
 
-However, extremely high evaluation scores may also indicate potential overfitting, especially when the preference dataset size is limited.
+Reward accuracy: 1.0
+
+Reward margin: 15.95
 
 
-### Lessons Learned
+## Analysis
 
-DPO performance should not be evaluated only by reward metrics.
+The model quickly learned the preference ranking.
+
+During training:
+
+- Early stage:
+  - Reward accuracy was around 0.7
+  - Reward margin was small
+
+- Later stage:
+  - Reward accuracy reached 1.0
+  - Reward margin increased significantly
+
+
+This indicates that DPO successfully optimized the preference objective.
+
+
+## Overfitting Consideration
+
+Although the preference metrics became very strong, extremely high reward accuracy and margin may indicate over-optimization on a limited preference dataset.
+
+Therefore, DPO evaluation should not rely only on reward metrics.
 
 Additional evaluation should consider:
 
@@ -85,69 +187,25 @@ Additional evaluation should consider:
 
 ---
 
-## 3. LoRA Parameter Analysis
+# 4. Overall Observations
 
-LoRA provides parameter-efficient fine-tuning by optimizing only adapter parameters.
-
-Important factors include:
+The three-stage pipeline solves different problems:
 
 
-### LoRA Rank
-
-Higher rank:
-
-- Larger adapter capacity
-- More trainable parameters
-- Higher memory usage
+| Stage | Main Goal |
+|---|---|
+| Continued Pretraining | Learn medical domain knowledge |
+| SFT | Learn instruction-following behavior |
+| DPO | Align responses with preference |
 
 
-Lower rank:
+The experiments show that LLM post-training is not only about reducing training loss.
 
-- Faster training
-- Lower memory cost
-- May limit adaptation ability
-
-
-The optimal rank depends on:
-
-- Dataset size
-- Task complexity
-- Available computing resources
-
-
----
-
-## 4. Engineering Issues
-
-### CUDA Compatibility
-
-During experiments, GPU and PyTorch CUDA compatibility issues affected training execution.
-
-The solution was to ensure:
-
-- Compatible CUDA version
-- Matching PyTorch build
-- Correct GPU architecture support
-
-
-### Memory Optimization
-
-Large language model fine-tuning requires memory optimization.
-
-Techniques used:
-
-- LoRA
-- Gradient checkpointing
-- Mixed precision training
-
-
----
-
-## Summary
-
-The experiments demonstrate that successful LLM fine-tuning requires not only training a model, but also analyzing:
+Model behavior depends on:
 
 - Dataset quality
-- Training objectives
-- Alignment strategies
-- Model behavior after fine-tuning
+- Training objective
+- Fine-tuning strategy
+- Alignment method
+
+
