@@ -1,0 +1,47 @@
+# Supervised Fine-tuning Configuration
+# Instruction tuning stage
+
+
+stage: supervised_finetuning
+
+
+model:
+  base_model: runs/pt_merged
+  task: causal_language_modeling
+
+
+data:
+  type: instruction_response_dataset
+
+  # Only assistant responses contribute to loss
+  label_masking: true
+
+
+training:
+  objective: supervised_causal_lm
+
+  batch_size: 2
+
+  epochs: 2
+  max_steps: 100
+
+  learning_rate: 2e-5
+
+  logging_steps: 10
+  eval_steps: 25
+  save_steps: 50
+
+  gradient_checkpointing: true
+
+
+lora:
+  enabled: true
+  type: LORA
+
+  rank: 8
+  alpha: 16
+  dropout: 0.05
+
+
+output:
+  save_adapter_only: true
