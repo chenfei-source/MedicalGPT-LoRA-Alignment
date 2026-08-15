@@ -43,6 +43,7 @@ The optimization encourages:
 
 
 Pipeline:
+
 SFT Model
 
 ↓
@@ -81,6 +82,7 @@ Limitations:
 PPO is the classic reinforcement learning method used in RLHF.
 
 Pipeline:
+
 SFT Model
 
 ↓
@@ -123,6 +125,7 @@ Disadvantages:
 GRPO is a reinforcement learning approach that removes the need for an explicit critic/value model.
 
 Basic idea:
+
 Prompt
 
 ↓
@@ -163,6 +166,7 @@ GRPO has been widely used in recent reasoning model training.
 ---
 
 # Alignment Pipeline in This Project
+
 Base LLM
 
 ↓
