@@ -23,30 +23,45 @@ The project focuses on:
 ---
 
 ## Pipeline
+
 Base LLM
+
   ↓
+  
 Continued Pretraining
 (Medical Domain Adaptation)
+
   ↓
+  
 SFT
 (Instruction Following)
+
   ↓
+  
 DPO
 (Preference Alignment)
+
   ↓
+  
 Aligned Medical Assistant
 
 ---
 
 ## Project Structure
+
 MedicalGPT/
+
 │
+
 ├── configs/
+
 │ ├── pretraining.yaml
 │ ├── sft.yaml
 │ └── dpo.yaml
 │
+
 ├── docs/
+
 │ ├── training.md
 │ ├── alignment.md
 │ └── experiments.md
